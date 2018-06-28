@@ -7,5 +7,5 @@ Please check the LICENSE for commercial use.
 Office Barcode Integration for Excel ist ein Werkzeug zur Erzeugung von Barcodes in einer
 Excel Arbeitsmappe. 
 
-Diese Lösung ist kostenlos und enthält keine Zahlungen für die private Nutzung
+Diese Lösung ist kostenlos und enthält keine Zahlungen für die private Nutzung.
 Bitte prüfen Sie die LICENSE zur kommerziellen Verwendung.
