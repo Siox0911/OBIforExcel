@@ -197,6 +197,7 @@
       <DependentUpon>RibbonDMMenu.cs</DependentUpon>
     </EmbeddedResource>
     <None Include="app.config" />
+    <None Include="LICENSE" />
     <None Include="OBIforExcel_TemporaryKey.pfx" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>

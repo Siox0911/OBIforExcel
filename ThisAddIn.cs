@@ -9,11 +9,13 @@ using DataMatrix.net;
 using OBIforExcel.CellCache;
 
 /*
- * Dieses Addin funktioniert mit Excel 2016. Es wird nicht die Bibliothek Microsoft.Office.Interop.Excel Version 15 vorausgesetzt. 
- * Diese ist in den PIA Verweisen nicht enthalten. Im Manifest steht also keine Excelversion, so dass bei einer älteren Office Version wie 2010, 2013 das Addin durchaus
- * funktionieren sollte. Es kann der PIA Verweis aber auch an eine Excelversion gekoppelt werden. Dazu einfach bei den Verweisen unter
- * Microsoft.Office.Interop.Excel in den Eigenschaften die Einstellung Interoptypen einbetten auf False stellen. Dann wird im Manifest direkt auf die Interop Version 15
- * verwiesen und diese muss dann installiert sein. Ansonsten kann das AddIn in Excel nicht geladen werden.
+ * Dieses Addin funktioniert mit Excel 2016. Es wird nicht die Bibliothek Microsoft.Office.Interop.Excel Version 15 
+ * vorausgesetzt. Diese ist in den PIA Verweisen nicht enthalten. Im Manifest steht also keine Excelversion, so 
+ * dass bei einer älteren Office Version wie 2010, 2013 das Addin durchaus funktionieren sollte. Es kann der PIA 
+ * Verweis aber auch an eine Excelversion gekoppelt werden. Dazu einfach bei den Verweisen unter
+ * Microsoft.Office.Interop.Excel in den Eigenschaften die Einstellung Interoptypen einbetten auf False stellen. 
+ * Dann wird im Manifest direkt auf die Interop Version 15 verwiesen und diese muss dann installiert sein. 
+ * Ansonsten kann das AddIn in Excel nicht geladen werden.
  */
 
 namespace OBIforExcel
@@ -57,7 +59,12 @@ namespace OBIforExcel
             }
             catch (Exception ex)
             {
-                System.Windows.Forms.MessageBox.Show(ex.Message, "Error on checking active Workbook", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+                System.Windows.Forms.MessageBox.Show(
+                    ex.Message
+                    , "Error on checking active Workbook"
+                    , System.Windows.Forms.MessageBoxButtons.OK
+                    , System.Windows.Forms.MessageBoxIcon.Error
+                );
             }
         }
 
@@ -102,14 +109,15 @@ namespace OBIforExcel
         /// <param name="Sh"></param>
         private void SheetCalculate(object Sh)
         {
-            if(((Excel.Worksheet)Sh) != null)
+            if (((Excel.Worksheet)Sh) != null)
             {
                 CheckWorksheet((Excel.Worksheet)Sh);
             }
         }
 
         /// <summary>
-        /// Zellen im Workbook haben sich geändert. Nicht davon betroffen sind berechnete und abhängige Zellen im kompletten Workbook.
+        /// Zellen im Workbook haben sich geändert. Nicht davon betroffen sind berechnete und abhängige Zellen im 
+        /// kompletten Workbook.
         /// </summary>
         /// <param name="Sh"></param>
         /// <param name="Target"></param>
@@ -192,7 +200,8 @@ namespace OBIforExcel
                                     newShape.Shape.Width = cllShp.Shape.Width;
                                     newShape.Shape.Height = cllShp.Shape.Height;
 
-                                    //Und wir ersetzen die Formatierungsoptionen durch die Optionen welche oben gepickt wurden
+                                    //Und wir ersetzen die Formatierungsoptionen durch die Optionen welche oben 
+                                    //gepickt wurden
                                     newShape.Shape.Apply();
                                     //Dann fügen wir den neuen Shape unserem Cache hinzu
                                     cellCache.CellShapes.Add(newShape);
@@ -205,7 +214,11 @@ namespace OBIforExcel
                             }
                             catch (Exception ex)
                             {
-                                System.Windows.Forms.MessageBox.Show($"Error on replace a barcode in the worksheet\n\n{ex.Message}", "Error in OBIforExcel", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+                                System.Windows.Forms.MessageBox.Show(
+                                    $"Error on replace a barcode in the worksheet\n\n{ex.Message}"
+                                    , "Error in OBIforExcel"
+                                    , System.Windows.Forms.MessageBoxButtons.OK
+                                    , System.Windows.Forms.MessageBoxIcon.Error);
                             }
                         }
                     }
@@ -223,7 +236,8 @@ namespace OBIforExcel
         }
 
         /// <summary>
-        /// Gibt die aktuelle gewählte Zelle zurück. Wenn mehr als eine Zelle merkiiert ist, dann wird <c>null</c> zurückgegeben.
+        /// Gibt die aktuelle gewählte Zelle zurück. Wenn mehr als eine Zelle merkiiert ist, dann wird 
+        /// <c>null</c> zurückgegeben.
         /// </summary>
         /// <returns></returns>
         public Excel.Range GetCurrentCell()
@@ -242,7 +256,8 @@ namespace OBIforExcel
         }
 
         /// <summary>
-        /// Gibt die aktuelle Auswahl der Zellen zurück. Sollte verwendet werden, wenn <see cref="GetCurrentCell"/> null zurück gibt.
+        /// Gibt die aktuelle Auswahl der Zellen zurück. Sollte verwendet werden, wenn <see cref="GetCurrentCell"/> 
+        /// null zurück gibt.
         /// </summary>
         /// <returns></returns>
         public Excel.Range GetCurrentSelection()
@@ -298,12 +313,19 @@ namespace OBIforExcel
                 }
                 catch (Exception ex)
                 {
-                    System.Windows.Forms.MessageBox.Show(ex.Message, "Error on creating barcode image", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+                    System.Windows.Forms.MessageBox.Show(
+                        ex.Message
+                        , "Error on creating barcode image"
+                        , System.Windows.Forms.MessageBoxButtons.OK
+                        , System.Windows.Forms.MessageBoxIcon.Error);
                 }
             }
             else
             {
-                System.Windows.Forms.MessageBox.Show("A value of a cell can't be empty!", "Error on creating barcode image", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+                System.Windows.Forms.MessageBox.Show("A value of a cell can't be empty!"
+                    , "Error on creating barcode image"
+                    , System.Windows.Forms.MessageBoxButtons.OK
+                    , System.Windows.Forms.MessageBoxIcon.Error);
             }
         }
 

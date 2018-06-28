@@ -48,8 +48,8 @@ namespace OBIforExcel.CellCache
         }
 
         /// <summary>
-        /// Fügt den Zellen Shape der aktuellen Liste hinzu, soweit der <paramref name="cellShape"/> ungleich null ist 
-        /// und die eigene Liste <seealso cref="CellShapes"/> ungleich null ist.
+        /// Fügt den Zellen Shape der aktuellen Liste hinzu, soweit der <paramref name="cellShape"/> 
+        /// ungleich null ist         /// und die eigene Liste <seealso cref="CellShapes"/> ungleich null ist.
         /// </summary>
         /// <param name="cellShape"></param>
         internal void AddCellShape(CellShape cellShape)
@@ -61,7 +61,8 @@ namespace OBIforExcel.CellCache
         }
 
         /// <summary>
-        /// Versucht im Worksheet die Shapes mit den Barcodes zu finden. Dabei wird wenigstens ein Zellen Cache mit einer leeren Liste an Zellen Shapes erstellt.
+        /// Versucht im Worksheet die Shapes mit den Barcodes zu finden. Dabei wird wenigstens ein Zellen 
+        /// Cache mit einer leeren Liste an Zellen Shapes erstellt.
         /// </summary>
         /// <param name="worksheet"></param>
         /// <returns></returns>
