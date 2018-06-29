@@ -30,7 +30,7 @@
     <DefineConstants>VSTO40</DefineConstants>
     <IsWebBootstrapper>False</IsWebBootstrapper>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-    <PublishUrl>veröffentlichen\</PublishUrl>
+    <PublishUrl>public\</PublishUrl>
     <InstallUrl />
     <TargetCulture>de</TargetCulture>
     <ApplicationVersion>1.0.0.3</ApplicationVersion>
@@ -38,8 +38,8 @@
     <UpdateEnabled>true</UpdateEnabled>
     <UpdateInterval>7</UpdateInterval>
     <UpdateIntervalUnits>days</UpdateIntervalUnits>
-    <ProductName>OBIforExcel</ProductName>
-    <PublisherName />
+    <ProductName>Office Barcode Integration for Excel</ProductName>
+    <PublisherName>Ronny Witzgall</PublisherName>
     <SupportUrl />
     <FriendlyName>OBIforExcel</FriendlyName>
     <OfficeApplicationDescription />
@@ -93,6 +93,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
     <DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
     <WarningLevel>4</WarningLevel>
+    <DocumentationFile>bin\Debug\OBIforExcel.xml</DocumentationFile>
   </PropertyGroup>
   <!--
     This section defines properties that are set when the "Release" configuration is selected.

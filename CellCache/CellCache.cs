@@ -10,6 +10,7 @@ namespace OBIforExcel.CellCache
 {
     /// <summary>
     /// Klasse welche den internen Zellen Cache darstellt.
+    /// Der Zellen Cache arbeitet immer nur im aktuellen Worksheet.
     /// </summary>
     internal class CellCache
     {

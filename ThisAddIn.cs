@@ -43,8 +43,19 @@ namespace OBIforExcel
             this.Application.SheetActivate += SheetActivate;
             //Ein Sheet wurde deaktiviert, z.B. Tabelle1 und Tabelle2 wurde dafür dann aktiviert
             this.Application.SheetDeactivate += SheetDeactivate;
+            //Before der Sheet gelöscht wird
+            this.Application.SheetBeforeDelete += SheetBeforeDelete;
+
+            //Unter Excel 2010 kann es passieren, dass der nächste Event nicht abgefeuert wird.
+            //Sollte dies der Fall sein, dann kann man ihn so auslösen: Nächste Zeile auskommentieren
+            //WorkbookActivate(this.Application.ThisWorkbook);
+
             //Wenn ein Workbook aktiviert wird. Wird beim Laden eines Workbooks aufgerufen
             this.Application.WorkbookActivate += WorkbookActivate;
+
+            //Der nächste Event wird noch greifen, wenn der Cache evtl. auf die gesamte
+            //Mappe ausgeweitet wird.
+            //this.Application.AfterCalculate += AppAfterCalculate;
         }
 
         private void WorkbookActivate(Excel.Workbook Wb)
@@ -104,6 +115,20 @@ namespace OBIforExcel
         }
 
         /// <summary>
+        /// Bevor der Sheet gelöscht wird
+        /// </summary>
+        /// <param name="Sh"></param>
+        private void SheetBeforeDelete(object Sh)
+        {
+            //Wenn der zu löschende Sheet unser aktueller im Cache ist
+            if (((Excel.Worksheet)Sh).Name.Equals(cellCache?.WorksheetName))
+            {
+                //Hier wird der Cache platt gemacht
+                cellCache = null;
+            }
+        }
+
+        /// <summary>
         /// Event welcher aufgerufen wird, sobald der Sheet neu berechnet wird
         /// </summary>
         /// <param name="Sh"></param>
@@ -148,13 +173,23 @@ namespace OBIforExcel
         {
             //Das machen wir aber nur, wenn der Worksheetname mit dem Namen im Zellen Cache übereinstimmt.
             //Weil wir nicht wissen was in den anderen Tabellenblättern so ist, da dies im Cache nicht abgebildet ist
-            if (worksheet?.Name.Equals(cellCache.WorksheetName) == true)
+            if (worksheet?.Name.Equals(cellCache?.WorksheetName) == true && cellCache?.CellShapes?.Count > 0)
             {
+                //Array aus unserem Zellen Cache erstellen
+                //Müssen wir machen, weil CheckRange verändert den Cache und das führt 
+                //in der For Schleife zu einer Exception weil sich die Auflistung geändert hat.
+                var rng = new Excel.Range[cellCache.CellShapes.Count];
                 //Wir laufen durch unseren Zellen Cache
-                foreach (var item in cellCache.CellShapes)
+                for (int i = 0; i < cellCache.CellShapes.Count; i++)
                 {
-                    //Und prüfen jeden Eintrag auf Änderungen
-                    CheckRange(worksheet.Range[item.Address]);
+                    //Dem Array hinzufügen
+                    rng[i] = worksheet.Range[cellCache.CellShapes[i].Address];
+                }
+
+                //Jetzt wird jeder Eintrag im Cache geprüft
+                foreach (var item in rng)
+                {
+                    CheckRange(item);
                 }
             }
         }
@@ -166,7 +201,7 @@ namespace OBIforExcel
         private void CheckRange(Excel.Range range)
         {
             //Ist im Zellen Cache überhaupt ein Shape vorhanden?
-            if (cellCache.CellShapes?.Count > 0)
+            if (cellCache?.CellShapes?.Count > 0)
             {
                 //Durch alle Zellen der Range laufen
                 foreach (Excel.Range cell in range.Cells)
@@ -187,30 +222,41 @@ namespace OBIforExcel
                             //System.Windows.Forms.MessageBox.Show($"Die Zelle {cell.Address} wurde geändert.\nAktueller Worksheet: {range.Worksheet.Name}\nAlter Wert: {cllShp.Value}\nNeuer Wert: {cell.Value}");
                             try
                             {
-                                //Hier picken wir die Formatierungsoptionen des alten Shapes auf
-                                cllShp.Shape.PickUp();
-                                //Dann erzeugen wir einen neuen Shape
-                                CellShape newShape = CellShape.AddShape(cell.Value?.ToString(), cell, false);
-                                //Wenn der nicht null ist
-                                if (newShape?.Shape != null)
+                                //Wenn der alte Shape != null ist
+                                if (cllShp.Shape != null)
                                 {
-                                    //dann übernehmen wir Position und Größe des alten
-                                    newShape.Shape.Top = cllShp.Shape.Top;
-                                    newShape.Shape.Left = cllShp.Shape.Left;
-                                    newShape.Shape.Width = cllShp.Shape.Width;
-                                    newShape.Shape.Height = cllShp.Shape.Height;
+                                    //Hier picken wir die Formatierungsoptionen des alten Shapes auf
+                                    cllShp.Shape.PickUp();
+                                    //Dann erzeugen wir einen neuen Shape
+                                    CellShape newShape = CellShape.AddShape(cell.Value?.ToString(), cell, false);
+                                    //Wenn der nicht null ist
+                                    if (newShape?.Shape != null)
+                                    {
+                                        //dann übernehmen wir Position und Größe des alten
+                                        newShape.Shape.Top = cllShp.Shape.Top;
+                                        newShape.Shape.Left = cllShp.Shape.Left;
+                                        newShape.Shape.Width = cllShp.Shape.Width;
+                                        newShape.Shape.Height = cllShp.Shape.Height;
 
-                                    //Und wir ersetzen die Formatierungsoptionen durch die Optionen welche oben 
-                                    //gepickt wurden
-                                    newShape.Shape.Apply();
-                                    //Dann fügen wir den neuen Shape unserem Cache hinzu
-                                    cellCache.CellShapes.Add(newShape);
+                                        //Und wir ersetzen die Formatierungsoptionen durch die Optionen welche oben 
+                                        //gepickt wurden
+                                        newShape.Shape.Apply();
+                                        //Dann fügen wir den neuen Shape unserem Cache hinzu
+                                        cellCache.CellShapes.Add(newShape);
+                                    }
+
+                                    //Wir löschen den alten Shape
+                                    cllShp.Shape.Delete();
+                                    //Der Cache wird trotzdem um den alten Cacheeintrag erleichtert.
+                                    cellCache.CellShapes.Remove(cllShp);
                                 }
-
-                                //Wir löschen den alten Shape
-                                cllShp.Shape.Delete();
-                                //Der Cache wird trotzdem um den alten Cacheeintrag erleichtert.
-                                cellCache.CellShapes.Remove(cllShp);
+                                //Sonst lösche den Shape in unserem Cache
+                                else
+                                {
+                                    //Shape wurde vermutlich vom Benutzer gelöscht.
+                                    //Wir schmeißen den Eintrag aus dem Cache
+                                    cellCache.CellShapes.Remove(cllShp);
+                                }
                             }
                             catch (Exception ex)
                             {
