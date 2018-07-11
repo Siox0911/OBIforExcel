@@ -26,9 +26,14 @@ namespace OBIforExcel
     public partial class ThisAddIn
     {
         /// <summary>
-        /// Der aktuelle Zellen Cache im aktuellen Worksheet
+        /// Der aktuelle Zellen Cache im aktuellen Workbook
         /// </summary>
-        private CellCache.CellCache cellCache;
+        private WorkbookCache workbookCache;
+
+        /// <summary>
+        /// Das aktuelle Workbook
+        /// </summary>
+        private string workbookName;
 
         /// <summary>
         /// Wird aufgerufen, sobald das AddIn geladen wurde
@@ -39,44 +44,18 @@ namespace OBIforExcel
         {
             //Ein paar Events von Excel abgreifen
 
-            //Ein Sheet wurde aktiviert, z.B. Tabelle1
-            this.Application.SheetActivate += SheetActivate;
-            //Ein Sheet wurde deaktiviert, z.B. Tabelle1 und Tabelle2 wurde dafür dann aktiviert
-            this.Application.SheetDeactivate += SheetDeactivate;
-            //Before der Sheet gelöscht wird
-            this.Application.SheetBeforeDelete += SheetBeforeDelete;
-
             //Unter Excel 2010 kann es passieren, dass der nächste Event nicht abgefeuert wird.
-            //Sollte dies der Fall sein, dann kann man ihn so auslösen: Nächste Zeile auskommentieren
-            //WorkbookActivate(this.Application.ThisWorkbook);
+            //Dann ist meistens schon ein Workbook geladen, wir greifen hier vorher ein.
+            if (this.Application.ActiveWorkbook != null)
+            {
+                WorkbookActivate(this.Application.ActiveWorkbook);
+            }
 
             //Wenn ein Workbook aktiviert wird. Wird beim Laden eines Workbooks aufgerufen
             this.Application.WorkbookActivate += WorkbookActivate;
 
-            //Der nächste Event wird noch greifen, wenn der Cache evtl. auf die gesamte
-            //Mappe ausgeweitet wird.
-            //this.Application.AfterCalculate += AppAfterCalculate;
-        }
-
-        private void WorkbookActivate(Excel.Workbook Wb)
-        {
-            //System.Windows.Forms.MessageBox.Show($"Workbook {((Excel.Workbook)Wb).Name} aktiviert");
-            try
-            {
-                //Zellen Cache erstellen
-                CreateCellCache(GetActiveWorksheet());
-                //Den aktuellen Sheet aktivieren, weil das nicht automatisch passiert
-                SheetActivate(GetActiveWorksheet());
-            }
-            catch (Exception ex)
-            {
-                System.Windows.Forms.MessageBox.Show(
-                    ex.Message
-                    , "Error on checking active Workbook"
-                    , System.Windows.Forms.MessageBoxButtons.OK
-                    , System.Windows.Forms.MessageBoxIcon.Error
-                );
-            }
+            //Wird aufgerufen, wenn eine Zelle geändert oder neu berechnet wurde.
+            this.Application.AfterCalculate += AppAfterCalculate;
         }
 
         /// <summary>
@@ -87,82 +66,73 @@ namespace OBIforExcel
         private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
         {
             //Wenn das AddIn heruntergefahren wird, dann lösche den Zellen Cache
-            cellCache = null;
+            workbookCache = null;
         }
 
         /// <summary>
-        /// Der aktuelle Sheet wurde abgewählt
+        /// Wird jedesmal aufgerufen wenn sich eine Zelle ändert, egal ob eingegeben oder berechnet.
         /// </summary>
-        /// <param name="Sh"></param>
-        private void SheetDeactivate(object Sh)
+        private void AppAfterCalculate()
         {
-            //Wenn ein Sheet deaktiviert wird, dann werden die Events abgemeldet
-            this.Application.SheetChange -= SheetChanged;
-            this.Application.SheetCalculate -= SheetCalculate;
-            cellCache = null;
-        }
-
-        /// <summary>
-        /// Es wurde ein anderer Sheet ausgewählt
-        /// </summary>
-        /// <param name="Sh"></param>
-        private void SheetActivate(object Sh)
-        {
-            //Wenn ein Sheet aktiviert wird, dann werden die Events registiert.
-            CreateCellCache((Excel.Worksheet)Sh);
-            this.Application.SheetChange += SheetChanged;
-            this.Application.SheetCalculate += SheetCalculate;
-        }
-
-        /// <summary>
-        /// Bevor der Sheet gelöscht wird
-        /// </summary>
-        /// <param name="Sh"></param>
-        private void SheetBeforeDelete(object Sh)
-        {
-            //Wenn der zu löschende Sheet unser aktueller im Cache ist
-            if (((Excel.Worksheet)Sh).Name.Equals(cellCache?.WorksheetName))
+            try
             {
-                //Hier wird der Cache platt gemacht
-                cellCache = null;
+                CheckWorkbook();
+            }
+            catch (Exception ex)
+            {
+                System.Windows.Forms.MessageBox.Show(
+                    ex.Message
+                    , "OBIforExcel - Error on checking workbook cache"
+                    , System.Windows.Forms.MessageBoxButtons.OK
+                    , System.Windows.Forms.MessageBoxIcon.Error
+                );
             }
         }
 
         /// <summary>
-        /// Event welcher aufgerufen wird, sobald der Sheet neu berechnet wird
+        /// Wird aufgerufen, wenn das Workbook aktiviert wird
         /// </summary>
-        /// <param name="Sh"></param>
-        private void SheetCalculate(object Sh)
+        /// <param name="Wb"></param>
+        private void WorkbookActivate(Excel.Workbook Wb)
         {
-            if (((Excel.Worksheet)Sh) != null)
+            //System.Windows.Forms.MessageBox.Show($"Workbook {((Excel.Workbook)Wb).Name} aktiviert");
+            try
             {
-                CheckWorksheet((Excel.Worksheet)Sh);
+                this.workbookName = Wb.Name;
+                //Zellen Cache erstellen
+                CreateWorkbookCache(Wb);
             }
-        }
-
-        /// <summary>
-        /// Zellen im Workbook haben sich geändert. Nicht davon betroffen sind berechnete und abhängige Zellen im 
-        /// kompletten Workbook.
-        /// </summary>
-        /// <param name="Sh"></param>
-        /// <param name="Target"></param>
-        private void SheetChanged(object Sh, Excel.Range Target)
-        {
-            CheckRange(Target);
+            catch (Exception ex)
+            {
+                System.Windows.Forms.MessageBox.Show(
+                    ex.Message
+                    , "OBIforExcel - Error on creating workbook cache"
+                    , System.Windows.Forms.MessageBoxButtons.OK
+                    , System.Windows.Forms.MessageBoxIcon.Error
+                );
+            }
         }
 
         /// <summary>
         /// Erzeugt den Zellen Cache. Dabei werden die Prüfungen durch den CellCache und die CellShapes durchgeführt.
         /// Hier wird nur zusätzlich der Worksheet auf null geprüft
         /// </summary>
-        /// <param name="worksheet"></param>
-        private void CreateCellCache(Excel.Worksheet worksheet)
+        /// <param name="workbook"></param>
+        private void CreateWorkbookCache(Excel.Workbook workbook)
         {
-            if (worksheet != null)
+            if (workbook != null)
             {
-                //Erstelle einen neuen Zellen Cache
-                cellCache = new CellCache.CellCache(worksheet);
+                //Erstelle einen neuen Workbook Cache
+                workbookCache = new WorkbookCache(workbook);
             }
+        }
+
+        /// <summary>
+        /// Prüft das Workbook, wenn der Cache existiert
+        /// </summary>
+        private void CheckWorkbook()
+        {
+            workbookCache?.CheckWorkbook();
         }
 
         /// <summary>
@@ -171,26 +141,9 @@ namespace OBIforExcel
         /// <param name="worksheet"></param>
         private void CheckWorksheet(Excel.Worksheet worksheet)
         {
-            //Das machen wir aber nur, wenn der Worksheetname mit dem Namen im Zellen Cache übereinstimmt.
-            //Weil wir nicht wissen was in den anderen Tabellenblättern so ist, da dies im Cache nicht abgebildet ist
-            if (worksheet?.Name.Equals(cellCache?.WorksheetName) == true && cellCache?.CellShapes?.Count > 0)
+            if (worksheet != null)
             {
-                //Array aus unserem Zellen Cache erstellen
-                //Müssen wir machen, weil CheckRange verändert den Cache und das führt 
-                //in der For Schleife zu einer Exception weil sich die Auflistung geändert hat.
-                var rng = new Excel.Range[cellCache.CellShapes.Count];
-                //Wir laufen durch unseren Zellen Cache
-                for (int i = 0; i < cellCache.CellShapes.Count; i++)
-                {
-                    //Dem Array hinzufügen
-                    rng[i] = worksheet.Range[cellCache.CellShapes[i].Address];
-                }
-
-                //Jetzt wird jeder Eintrag im Cache geprüft
-                foreach (var item in rng)
-                {
-                    CheckRange(item);
-                }
+                workbookCache?.CheckWorkSheet(worksheet);
             }
         }
 
@@ -200,75 +153,9 @@ namespace OBIforExcel
         /// <param name="range"></param>
         private void CheckRange(Excel.Range range)
         {
-            //Ist im Zellen Cache überhaupt ein Shape vorhanden?
-            if (cellCache?.CellShapes?.Count > 0)
+            if (range != null)
             {
-                //Durch alle Zellen der Range laufen
-                foreach (Excel.Range cell in range.Cells)
-                {
-                    //Ist im Zellen Cache irgend eine Adresse welche der Adresse der Zelle entspricht?
-                    if (cellCache.CellShapes.Any(x => x.Address.Equals(cell.Address)))
-                    {
-                        //Die geänderte Zelle ermitteln
-                        var cllShp = cellCache.CellShapes.First(x => x.Address.Equals(cell.Address));
-                        //Wurde der Inhalt geändert
-                        if (!cllShp?.Value?.Equals(cell.Value))
-                        {
-                            /*
-                             * Ja hier müssen wir einen neuen Shape erstellen, die Formatierung, Wert und Position
-                             * des alten übernehmen und diesen im Cache und im Tabellenblatt ersetzen.
-                             * Am Ende wird der alte Shape gelöscht.
-                             */
-                            //System.Windows.Forms.MessageBox.Show($"Die Zelle {cell.Address} wurde geändert.\nAktueller Worksheet: {range.Worksheet.Name}\nAlter Wert: {cllShp.Value}\nNeuer Wert: {cell.Value}");
-                            try
-                            {
-                                //Wenn der alte Shape != null ist
-                                if (cllShp.Shape != null)
-                                {
-                                    //Hier picken wir die Formatierungsoptionen des alten Shapes auf
-                                    cllShp.Shape.PickUp();
-                                    //Dann erzeugen wir einen neuen Shape
-                                    CellShape newShape = CellShape.AddShape(cell.Value?.ToString(), cell, false);
-                                    //Wenn der nicht null ist
-                                    if (newShape?.Shape != null)
-                                    {
-                                        //dann übernehmen wir Position und Größe des alten
-                                        newShape.Shape.Top = cllShp.Shape.Top;
-                                        newShape.Shape.Left = cllShp.Shape.Left;
-                                        newShape.Shape.Width = cllShp.Shape.Width;
-                                        newShape.Shape.Height = cllShp.Shape.Height;
-
-                                        //Und wir ersetzen die Formatierungsoptionen durch die Optionen welche oben 
-                                        //gepickt wurden
-                                        newShape.Shape.Apply();
-                                        //Dann fügen wir den neuen Shape unserem Cache hinzu
-                                        cellCache.CellShapes.Add(newShape);
-                                    }
-
-                                    //Wir löschen den alten Shape
-                                    cllShp.Shape.Delete();
-                                    //Der Cache wird trotzdem um den alten Cacheeintrag erleichtert.
-                                    cellCache.CellShapes.Remove(cllShp);
-                                }
-                                //Sonst lösche den Shape in unserem Cache
-                                else
-                                {
-                                    //Shape wurde vermutlich vom Benutzer gelöscht.
-                                    //Wir schmeißen den Eintrag aus dem Cache
-                                    cellCache.CellShapes.Remove(cllShp);
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                System.Windows.Forms.MessageBox.Show(
-                                    $"Error on replace a barcode in the worksheet\n\n{ex.Message}"
-                                    , "Error in OBIforExcel"
-                                    , System.Windows.Forms.MessageBoxButtons.OK
-                                    , System.Windows.Forms.MessageBoxIcon.Error);
-                            }
-                        }
-                    }
-                }
+                workbookCache?.CheckRange(range);
             }
         }
 
@@ -276,7 +163,7 @@ namespace OBIforExcel
         /// Gibt den aktiven Worksheet zurück. Wenn keiner ausgewählt ist, wird null zurückgegeben.
         /// </summary>
         /// <returns></returns>
-        public Excel.Worksheet GetActiveWorksheet()
+        private Excel.Worksheet GetActiveWorksheet()
         {
             return (Excel.Worksheet)Application.ActiveSheet;
         }
@@ -303,73 +190,38 @@ namespace OBIforExcel
 
         /// <summary>
         /// Gibt die aktuelle Auswahl der Zellen zurück. Sollte verwendet werden, wenn <see cref="GetCurrentCell"/> 
-        /// null zurück gibt.
+        /// null zurück gibt. Kann null zurückgeben, falls die Auswahl keine Zellen beinhaltet.
         /// </summary>
         /// <returns></returns>
         public Excel.Range GetCurrentSelection()
         {
-            return ((Excel.Range)Application.Selection).Cells;
+            //Nur eine Range zurückgeben, falls es auch eine ist
+            if(Application.Selection is Excel.Range)
+            {
+                return ((Excel.Range)Application.Selection).Cells;
+            }
+
+            return null;
         }
 
         /// <summary>
-        /// Fügt einem Bereich Bilder des Barcodes hinzu
+        /// Fügt den Barcode den Zellen in der Range hinzu
         /// </summary>
-        /// <param name="range"></param>
-        /// <param name="fitToCell"></param>
-        public void AddPictures(Excel.Range range, bool fitToCell = false)
+        /// <param name="range">Die Zellen welche den Barcode erhalten sollen.</param>
+        /// <param name="xlPlacement">Die Bindung des Bildes an die Zelle: free float, move or move and size</param>
+        /// <param name="fitToCell">Bild an die Zellengröße anpassen</param>
+        /// <param name="cellFitToPicture">Zelle an die Bildgröße anpassen</param>
+        public void AddPictures(Excel.Range range, Excel.XlPlacement xlPlacement, bool fitToCell = false, bool cellFitToPicture = false)
         {
-            //Wir laufen durch jede Zelle der Range
-            foreach (Excel.Range item in range.Cells)
+            try
             {
-                //und fügen das Bild ein, falls möglich
-                AddPicture(item, fitToCell);
+                workbookCache?.AddCellShape(this.Application.Workbooks[workbookName], range, xlPlacement, fitToCell, cellFitToPicture);
             }
-        }
-
-        /// <summary>
-        /// Fügt einer einzigen Zelle den Barcode hinzu, wenn mehr als eine Zelle in der Range ist, dann wird nichts getan
-        /// </summary>
-        /// <param name="range"></param>
-        /// <param name="fitToCell"></param>
-        public void AddPicture(Excel.Range range, bool fitToCell = false)
-        {
-            //Mehr als eine Zelle? dann weg hier
-            if (range?.Cells?.Count > 1)
-                return;
-
-            //Den Inhalt der Zelle auf null prüfen
-            var value = range.Value?.ToString();
-
-            //Der Wert der Zelle darf nicht null oder leer sein.
-            if (!string.IsNullOrEmpty(value))
+            catch (Exception ex)
             {
-                try
-                {
-                    //Es existiert kein Zellen Cache, dann instanziiere einen
-                    if (cellCache == null)
-                    {
-                        cellCache = new CellCache.CellCache(range.Worksheet);
-                    }
-                    var cellShape = CellShape.AddShape(value, range, fitToCell);
-                    //Füge den Zellen Shape nur hinzu, wenn diese nicht null ist
-                    if (cellShape != null)
-                    {
-                        cellCache.CellShapes.Add(cellShape);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Windows.Forms.MessageBox.Show(
-                        ex.Message
-                        , "Error on creating barcode image"
-                        , System.Windows.Forms.MessageBoxButtons.OK
-                        , System.Windows.Forms.MessageBoxIcon.Error);
-                }
-            }
-            else
-            {
-                System.Windows.Forms.MessageBox.Show("A value of a cell can't be empty!"
-                    , "Error on creating barcode image"
+                System.Windows.Forms.MessageBox.Show(
+                    ex.Message
+                    , "Error on creating barcode images"
                     , System.Windows.Forms.MessageBoxButtons.OK
                     , System.Windows.Forms.MessageBoxIcon.Error);
             }

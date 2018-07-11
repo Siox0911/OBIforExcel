@@ -30,10 +30,10 @@
     <DefineConstants>VSTO40</DefineConstants>
     <IsWebBootstrapper>False</IsWebBootstrapper>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-    <PublishUrl>public\</PublishUrl>
+    <PublishUrl>..\public\</PublishUrl>
     <InstallUrl />
     <TargetCulture>de</TargetCulture>
-    <ApplicationVersion>1.0.0.4</ApplicationVersion>
+    <ApplicationVersion>1.1.0.7</ApplicationVersion>
     <AutoIncrementApplicationRevision>true</AutoIncrementApplicationRevision>
     <UpdateEnabled>true</UpdateEnabled>
     <UpdateInterval>7</UpdateInterval>
@@ -180,8 +180,9 @@
     can be found.
   -->
   <ItemGroup>
-    <Compile Include="CellCache\CellCache.cs" />
+    <Compile Include="CellCache\SheetCache.cs" />
     <Compile Include="CellCache\CellShape.cs" />
+    <Compile Include="CellCache\WorkbookCache.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -198,6 +199,7 @@
       <DependentUpon>RibbonDMMenu.cs</DependentUpon>
     </EmbeddedResource>
     <None Include="app.config" />
+    <None Include="changelog.md" />
     <None Include="LICENSE" />
     <None Include="OBIforExcel_TemporaryKey.pfx" />
     <None Include="Properties\Settings.settings">
@@ -231,6 +233,9 @@
       <Project>{74e675e8-11ce-46da-aef4-ae7c996c4c62}</Project>
       <Name>DataMatrix.net</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="img\" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

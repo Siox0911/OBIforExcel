@@ -31,17 +31,18 @@ namespace OBIforExcel.CellCache
 
         /// <summary>
         /// Erzeugt einen Barcodeshape an der Position der Zelle <paramref name="range"/> mit dem Inhalt 
-        /// <paramref name="text"/> und passt die Größe an die Zelle an <paramref name="fitToCell"/>
+        /// der Zelle und passt die Größe an die Zelle an <paramref name="fitToCell"/>
         /// </summary>
-        /// <param name="text">Text der in den Barcode geschrieben wird</param>
         /// <param name="range">Die Zelle an der dieser Shape gebunden wird und an dessen stelle der Shape 
         /// platziert wird</param>
+        /// <param name="xlPlacement">Soll das Bild an "frei" beweglich sein oder an die "Zellposition" oder an "Zellposition und Größe" gebunden sein.</param>
         /// <param name="fitToCell">Soll das Shape an die Zellgröße angepasst werden.</param>
+        /// <param name="cellFitToPicture">Soll die Zelle an die Bildgröße angepasst werden.</param>
         /// <returns></returns>
-        internal static CellShape AddShape(string text, Excel.Range range, bool fitToCell = false)
+        internal static CellShape AddShape(Excel.Range range, Excel.XlPlacement xlPlacement = Excel.XlPlacement.xlMove, bool fitToCell = false, bool cellFitToPicture = false)
         {
             //Nur wenn der text nicht leer ist und die Zellen maximal 1 Zelle ist
-            if (!string.IsNullOrEmpty(text) && range?.Cells.Count == 1)
+            if (range?.Cells.Count == 1)
             {
                 //Inhalt der Zelle prüfen
                 var value = range.Value?.ToString();
@@ -76,11 +77,7 @@ namespace OBIforExcel.CellCache
                          * Erstellt ein Bild und speichert es an der Position der Zelle.
                          * Dem Shape wird die Zelle angehangen, die für den Inhalt verantwortlich ist.
                          */
-                        var shape = Globals
-                            .ThisAddIn
-                            .GetActiveWorksheet()
-                            .Shapes
-                            .AddPicture(
+                        var shape = range.Worksheet.Shapes.AddPicture(
                                 fName,
                                 Office.MsoTriState.msoFalse,
                                 Office.MsoTriState.msoCTrue,
@@ -88,6 +85,20 @@ namespace OBIforExcel.CellCache
                                 point.Y,
                                 size.Width,
                                 size.Height);
+
+                        //Wenn die Zelle angepasst werden soll, dann passen wir hier die Zellengröße an
+                        if (cellFitToPicture)
+                        {
+                            //Die Spaltenbreite ist etwas komplizierter, weil hier die Breite
+                            //in Einheiten der Schriftbreite verwendet wird.
+                            range.ColumnWidth = range.ColumnWidth / range.Width * size.Width;
+                            range.RowHeight = size.Height;
+                        }
+
+                        //Zellenbindung in Position und Größe
+                        //Ist das Bild frei, an die Position oder an Position und Größe gebunden
+                        shape.Placement = xlPlacement;
+
                         //Wir speichern den Namen des Shape in der Form Barcode($A$1), so können wir später 
                         //aus jedem Tabellenblatt die Verlinkung des Barcodes zur Ursprungszelle wieder herleiten
                         shape.Name = $"Barcode({range.Address})";
@@ -104,7 +115,7 @@ namespace OBIforExcel.CellCache
                     {
                         System.Windows.Forms.MessageBox.Show(
                             $"An Error on the barcode creation was thrown, see the message below:\n\n{ex.Message}"
-                            , "Error on creating barcode image"
+                            , "Error on creating barcode image in AddIn OBIforExcel"
                             , System.Windows.Forms.MessageBoxButtons.OK
                             , System.Windows.Forms.MessageBoxIcon.Error);
                     }
@@ -121,7 +132,7 @@ namespace OBIforExcel.CellCache
         internal static string GetAddress(Excel.Shape shape)
         {
             //Prüfe den Shape
-            if (CheckShape(shape))
+            if (CheckShapeName(shape))
             {
                 //Adresse ermitteln, also z.B. Barcode($A$1), dann wird alles zwischen den Klammern zurückgegeben
                 var addressCurShape = shape.Name.Split('(')?[1].Split(')')?[0];
@@ -134,7 +145,12 @@ namespace OBIforExcel.CellCache
             return null;
         }
 
-        internal static bool CheckShape(Excel.Shape shape)
+        /// <summary>
+        /// Prüft den Shape auf null und den Namen.
+        /// </summary>
+        /// <param name="shape"></param>
+        /// <returns></returns>
+        internal static bool CheckShapeName(Excel.Shape shape)
         {
             //Shape auf null prüfen
             if (shape != null)
@@ -162,7 +178,7 @@ namespace OBIforExcel.CellCache
         {
             if (range.Cells.Count > 1)
             {
-                throw new NotSupportedException($"This isn't a user issue, it's a problem on the Addin OBIforExcel." +
+                throw new NotSupportedException($"This isn't a user issue, it's a problem on the AddIn OBIforExcel." +
                     $"\n\nOnly one cell is allowed to get the position of it. Cells get: {range.Cells.Count}");
             }
 
@@ -177,7 +193,7 @@ namespace OBIforExcel.CellCache
         /// <param name="fitToCell">Soll das Bild an die Zellgröße angepasst werden</param>
         /// <returns></returns>
         /// <exception cref="NullReferenceException">Wenn das Bild leer ist</exception>
-        private static System.Drawing.Size GetPictureOrCellSize(string pathWithPicture, Excel.Range range, bool fitToCell)
+        private static System.Drawing.Size GetPictureOrCellSize(string pathWithPicture, Excel.Range range, bool fitToCell = false)
         {
             //Ist der Pfad mit dem Bild überhaupt gefüllt und existiert die Datei auch?
 
@@ -200,19 +216,19 @@ namespace OBIforExcel.CellCache
                 else
                 {
                     //Größe des Bildes ermitteln
-                    var bitMap = new System.Drawing.Bitmap(pathWithPicture);
-                    size.Height = bitMap.Height;
-                    size.Width = bitMap.Width;
+                    var bitmap = new System.Drawing.Bitmap(pathWithPicture);
+                    size.Height = bitmap.Height;
+                    size.Width = bitmap.Width;
 
                     //Wichtig, dass Bild wieder auf null setzen, da es sonst als verwendet markiert ist, falls 
                     //es jemand bearbeiten oder löschen möchte usw.
-                    bitMap = null;
+                    bitmap = null;
                 }
 
                 return size;
             }
 
-            throw new NullReferenceException($"This isn't a user issue, it's a problem on the Addin OBIforExcel." +
+            throw new NullReferenceException($"This isn't a user issue, it's a problem on the AddIn OBIforExcel." +
                 $"\n\nThe path of the picture is null or the path doesn't exist. Maybe some rights are forbidden " +
                 $"in the file system.\n\nPath check failed: \"{pathWithPicture}\"");
         }
